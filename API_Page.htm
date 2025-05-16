@@ -1,0 +1,170 @@
+<mvt:comment> Initialize flags </mvt:comment>
+<mvt:assign name="l.rqst_params_isvalid" value="0" />
+<mvt:assign name="l.ship_cost_isvalid" value="0" />
+<mvt:assign name="l.current_charge_isvalid" value="0" />
+<mvt:assign name="l.rqst_mode_isvalid" value="0" />
+<mvt:assign name="l.rqst_isvalid" value="0" />
+
+<mvt:comment> REQUEST PARAMETER VERIFICATION </mvt:comment>
+
+<mvt:comment> check if all variables were sent </mvt:comment>
+<mvt:if expr="NOT ISNULL g.ship_insurance_cost AND NOT ISNULL g.current_charge AND NOT ISNULL g.rqst_mode and g.ajax EQ 1">
+
+    <mvt:assign name="l.rqst_params_isvalid" value="1" />
+    <mvt:comment> Check if shipping insurance cost is in allowable range </mvt:comment>
+    <mvt:if expr="g.ship_insurance_cost LE 0">
+        <mvt:assign name="l.ship_cost_isvalid" value="0" />
+        <mvt:assign name="l.error:api_status_code" value="'E0'" />
+        <mvt:assign name="l.error:api_message" value="'Charge Must Be Greater Than 0'" />
+        <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
+    <mvt:elseif expr="g.ship_insurance_cost GT 1015">
+        <mvt:assign name="l.ship_cost_isvalid" value="0" />
+        <mvt:assign name="l.error:api_status_code" value="'E1'" />
+        <mvt:assign name="l.error:api_message" value="'Subtotal too large. Contact Sales for insurance options.'" />
+        <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
+    <mvt:else>
+        <mvt:assign name="l.ship_cost_isvalid" value="1" />
+    </mvt:if>
+
+    <mvt:comment> Validate current charge is greater than zero </mvt:comment>
+    <mvt:if expr="g.current_charge LT 0">
+        <mvt:assign name="l.current_charge_isvalid" value="0" />
+        <mvt:assign name="l.error:api_status_code" value="'E2'" />
+        <mvt:assign name="l.error:api_message" value="'Current charge is less than 0. Charge Deleted.'" />
+        <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
+    <mvt:else>
+        <mvt:assign name="l.current_charge_isvalid" value="1" />
+    </mvt:if>
+
+    <mvt:comment> validate rqst_mode values </mvt:comment>
+    <mvt:if expr="g.rqst_mode IN 'add' OR g.rqst_mode IN 'delete' OR g.rqst_mode IN 'update'">
+        <mvt:assign name="l.rqst_mode_isvalid" value="1" />
+    <mvt:else>
+        <mvt:assign name="l.rqst_mode_isvalid" value="0" />
+        <mvt:assign name="l.error:api_status_code" value="'E3'" />
+        <mvt:assign name="l.error:api_message" value="'Invalid Request Mode'" />
+        <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
+    </mvt:if>
+
+<mvt:else>
+    <mvt:assign name="l.rqst_params_isvalid" value="0" />
+    <mvt:assign name="l.error:api_status_code" value="'E4'" />
+    <mvt:assign name="l.error:api_message" value="'Missing One Or More Request Parameters'" />
+    <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
+</mvt:if>
+
+<mvt:if expr="l.ship_cost_isvalid EQ 1 AND l.current_charge_isvalidEQ 1 AND l.rqst_mode_isvalid EQ 1 AND l.rqst_params_isvalid EQ 1">
+    <mvt:assign name="l.rqst_isvalid" value="1" />
+<mvt:else>
+    <mvt:assign name="l.rqst_isvalid" value="0" />
+</mvt:if>
+
+    
+
+    <mvt:comment> Set error status code messages </mvt:comment>
+
+
+<mvt:comment> check validation </mvt:comment>
+<mvt:if expr="l.rqst_isvalid EQ 1">
+
+<mvt:comment> If variables are good check if it is an add, delete, or update. </mvt:comment>
+        <mvt:comment> ----------------------------------------- Add Start ------------------------------------------- </mvt:comment>
+    <mvt:if expr="rqst_mode EQ 'add'">
+        <mvt:do file="g.Module_Library_DB" name="l.success" value="BasketCharge_Delete_All_Type(g.Basket:basket_id, 'SHIPPING_INSURANCE')" />
+
+        <mvt:assign name="l.basket_charge:basket_id" value="g.Basket:basket_id" />
+        <mvt:assign name="l.basket_charge:module_id" value="0" />
+        <mvt:assign name="l.basket_charge:type" value="'SHIPPING_INSURANCE'" />
+        <mvt:assign name="l.basket_charge:descrip" value="'Shipping Insurance'" />
+        <mvt:assign name="l.basket_charge:amount" value="g.shipping_insurance" />
+        <mvt:assign name="l.basket_charge:disp_amt" value="g.shipping_insurance" />
+        <mvt:assign name="l.basket_charge:tax_exempt" value="1" />
+        <mvt:comment>insert charge</mvt:comment>
+        <mvt:do file="g.Module_Library_DB" name="l.chargecount" value="BasketCharge_Insert( l.basket_charge )" />
+
+        <mvt:comment>
+            | Reload Charges List
+        </mvt:comment>
+        <mvt:do file="g.Module_Library_DB" name="l.success" value="BasketChargeList_Load_Basket( g.Basket:basket_id, l.settings:charges )" /><mvt:comment>For some reason, using `l.settings:basket:charges` would never "refresh" the charges on the page, so we'll need to reassign it</mvt:comment>
+        <mvt:assign name="l.settings:basket:charges" value="l.settings:charges" />
+
+        <mvt:comment>
+            | Regenerate Currency Formatted Charges
+        </mvt:comment>
+        <mvt:foreach iterator="charge" array="basket:charges">
+            <mvt:do file="g.Module_Store_Module_Currency" name="l.settings:charge:formatted_disp_amt" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:charge:amount )" />
+        </mvt:foreach>
+
+        <mvt:comment>
+            | Reload Basket Totals
+        </mvt:comment>
+        <mvt:do file="g.Module_Library_DB" name="l.settings:basket:total" value="Basket_Total( g.Basket:basket_id )" />
+        <mvt:do file="g.Module_Store_Module_Currency" name="l.settings:basket:formatted_total" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:basket:total )" />
+        Total: &mvt:basket:formatted_total;<br>
+
+        <mvt:do file="g.Module_Library_DB" name="l.settings:basket:sub_total" value="Basket_SubTotal( g.Basket:basket_id )" />
+        <mvt:do file="g.Module_Store_Module_Currency" name="l.settings:basket:formatted_sub_total" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:basket:sub_total )" />
+        Sub Total: &mvt:basket:formatted_sub_total;<br>
+
+        <mvt:do file="g.Module_Library_DB" name="l.settings:basket:item_total" value="BasketItem_Total( g.Basket:basket_id )" />
+        <mvt:do file="g.Module_Store_Module_Currency" name="l.settings:basket:formatted_item_total" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:basket:item_total )" />
+        Item Total: &mvt:basket:formatted_item_total;<br>
+        
+        <mvt:if expr="l.settings:splitpayment:remaining">
+            <mvt:assign name="l.settings:splitpayment:remaining" value="l.settings:basket:total" />
+            <mvt:assign name="l.settings:splitpayment:formatted_remaining" value="l.settings:basket:formatted_total" />		
+            Remaining Total: &mvt:splitpayment:formatted_remaining;<br>
+        </mvt:if>
+
+        <mvt:if expr="rqst_mode EQ 'update'">
+            <mvt:assign name="l.settings:api_status_code" value="'S3'" />
+            <mvt:assign name="l.settings:api_message" value="'Charge Updated Successfully'" />
+        <mvt:else>
+            <mvt:assign name="l.settings:api_status_code" value="'S1'" />
+            <mvt:assign name="l.settings:api_message" value="'Charge Added Successfully'" />
+        </mvt:if>
+
+        
+        <mvt:comment> -------------------------------------- Add End -------------------------------------- </mvt:comment>
+
+        
+        <mvt:comment> ---------------------- Delete Start --------------------- </mvt:comment>
+    <mvt:elseif expr="rqst_mode EQ 'delete'">
+        <mvt:do file="g.Module_Library_DB" name="l.success" value="BasketCharge_Delete_All_Type(g.Basket:basket_id, 'SHIPPING_INSURANCE')" />
+        <mvt:assign name="l.settings:api_status_code" value="'S2'" />
+        <mvt:assign name="l.settings:api_message" value="'Charge Removed Successfully'" />
+
+        <mvt:comment> ---------------------- Delete End --------------------- </mvt:comment>   
+    </mvt:if>
+{
+    "status_code" : "&mvtj:api_status_code;",
+    "message" : "&mvtj:api_message;"
+}
+
+
+<mvt:else>
+    [
+        <mvt:foreach iterator="ship_api_error" array="ship_api_errors">
+        <mvt:if expr="POS1 NE 1">,</mvt:if>
+        {   
+                "status_code" : "&mvtj:ship_api_error:api_status_code;",
+                "message" : "&mvtj:ship_api_error:api_message;"
+        }
+        </mvt:foreach>
+    ]
+
+</mvt:if>
+
+<mvt:if expr="g.debug EQ 1">
+{
+    "rqst_params_isvalid": &mvtj:l.rqst_params_isvalid;,
+    "ship_cost_isvalid": &mvtj:l.ship_cost_isvalid;,
+    "current_charge_isvalid": &mvtj:l.current_charge_isvalid;,
+    "rqst_mode_isvalid": &mvtj:l.rqst_mode_isvalid;
+}
+</mvt:if>
+
+
+
+
+
