@@ -1,80 +1,86 @@
 <mvt:comment> Initialize flags </mvt:comment>
-<mvt:assign name="l.rqst_params_isvalid" value="0" />
-<mvt:assign name="l.ship_cost_isvalid" value="0" />
-<mvt:assign name="l.current_charge_isvalid" value="0" />
-<mvt:assign name="l.rqst_mode_isvalid" value="0" />
-<mvt:assign name="l.rqst_isvalid" value="0" />
+<mvt:assign name="l.settings:rqst_params_isvalid" value="0" />
+<mvt:assign name="l.settings:ship_cost_isvalid" value="0" />
+<mvt:assign name="l.settings:current_charge_isvalid" value="0" />
+<mvt:assign name="l.settings:rqst_mode_isvalid" value="0" />
+<mvt:assign name="l.settings:rqst_isvalid" value="0" />
 
 <mvt:comment> REQUEST PARAMETER VERIFICATION </mvt:comment>
 
 <mvt:comment> check if all variables were sent </mvt:comment>
 <mvt:if expr="NOT ISNULL g.ship_insurance_cost AND NOT ISNULL g.current_charge AND NOT ISNULL g.rqst_mode and g.ajax EQ 1">
 
-    <mvt:assign name="l.rqst_params_isvalid" value="1" />
+    <mvt:assign name="l.settings:rqst_params_isvalid" value="1" />
 
     <mvt:comment> Check if shipping insurance cost is in allowable range </mvt:comment>
     <mvt:if expr="g.ship_insurance_cost LE 0">
-        <mvt:assign name="l.ship_cost_isvalid" value="0" />
+        <mvt:assign name="l.settings:ship_cost_isvalid" value="0" />
         <mvt:assign name="l.error:api_status_code" value="'E0'" />
-        <mvt:assign name="l.error:api_message" value="'Charge Must Be Greater Than 0'" />
+        <mvt:assign name="l.error:api_message" value="'ERROR - Charge Must Be Greater Than 0'" />
         <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
     <mvt:elseif expr="g.ship_insurance_cost GT 1015">
-        <mvt:assign name="l.ship_cost_isvalid" value="0" />
+        <mvt:assign name="l.settings:ship_cost_isvalid" value="0" />
         <mvt:assign name="l.error:api_status_code" value="'E1'" />
-        <mvt:assign name="l.error:api_message" value="'Subtotal too large. Contact Sales for insurance options.'" />
+        <mvt:assign name="l.error:api_message" value="'ERROR - Subtotal too large. Contact Sales for insurance options.'" />
         <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
     <mvt:else>
-        <mvt:assign name="l.ship_cost_isvalid" value="1" />
+        <mvt:assign name="l.settings:ship_cost_isvalid" value="1" />
     </mvt:if>
 
     <mvt:comment> Check if current charge is greater than zero </mvt:comment>
     <mvt:if expr="g.current_charge LT 0">
-        <mvt:assign name="l.current_charge_isvalid" value="0" />
+        <mvt:assign name="l.settings:current_charge_isvalid" value="0" />
         <mvt:assign name="l.error:api_status_code" value="'E2'" />
-        <mvt:assign name="l.error:api_message" value="'Current charge is less than 0. Charge Deleted.'" />
+        <mvt:assign name="l.error:api_message" value="'ERROR - Current charge is less than 0. Charge Deleted.'" />
         <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
     <mvt:else>
-        <mvt:assign name="l.current_charge_isvalid" value="1" />
+        <mvt:assign name="l.settings:current_charge_isvalid" value="1" />
     </mvt:if>
+
 
     <mvt:comment> Check if rqst_mode values are allowable </mvt:comment>
     <mvt:if expr="g.rqst_mode IN 'add' OR g.rqst_mode IN 'delete' OR g.rqst_mode IN 'update'">
-        <mvt:assign name="l.rqst_mode_isvalid" value="1" />
+        <mvt:assign name="l.settings:rqst_mode_isvalid" value="1" />
     <mvt:else>
-        <mvt:assign name="l.rqst_mode_isvalid" value="0" />
+        <mvt:assign name="l.settings:rqst_mode_isvalid" value="0" />
         <mvt:assign name="l.error:api_status_code" value="'E3'" />
-        <mvt:assign name="l.error:api_message" value="'Invalid Request Mode'" />
+        <mvt:assign name="l.error:api_message" value="'ERROR - Invalid Request Mode'" />
         <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
     </mvt:if>
 
+    <mvt:comment> Edge case: Customer removed items from basket now ship_insurance_cost = 0 but current charge > 0. And rqst_mode = 'delete' or 'update' </mvt:comment>
+    <mvt:if expr="(g.rqst_mode EQ 'delete' OR g.rqst_mode EQ 'update') AND g.ship_insurance_cost EQ 0 AND g.current_charge GT 0">
+        <mvt:assign name="l.settings:ship_cost_isvalid" value="1" />
+    </mvt:if>
+    
 <mvt:else>
-    <mvt:assign name="l.rqst_params_isvalid" value="0" />
+    <mvt:assign name="l.settings:rqst_params_isvalid" value="0" />
     <mvt:assign name="l.error:api_status_code" value="'E4'" />
-    <mvt:assign name="l.error:api_message" value="'Missing One Or More Request Parameters'" />
+    <mvt:assign name="l.error:api_message" value="'ERROR - Missing One Or More Request Parameters'" />
     <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
 </mvt:if>
 
 <mvt:comment> Final Check. All previous checks must be valid </mvt:comment>
-<mvt:if expr="l.ship_cost_isvalid EQ 1 AND l.current_charge_isvalidEQ 1 AND l.rqst_mode_isvalid EQ 1 AND l.rqst_params_isvalid EQ 1">
-    <mvt:assign name="l.rqst_isvalid" value="1" />
+<mvt:if expr="l.settings:ship_cost_isvalid EQ 1 AND l.settings:current_charge_isvalid EQ 1 AND l.settings:rqst_mode_isvalid EQ 1 AND l.settings:rqst_params_isvalid EQ 1">
+    <mvt:assign name="l.settings:rqst_isvalid" value="1" />
 <mvt:else>
-    <mvt:assign name="l.rqst_isvalid" value="0" />
+    <mvt:assign name="l.settings:rqst_isvalid" value="0" />
 </mvt:if>
 
 
 <mvt:comment> If Final check is valid. Proceeds to process request. If Final Check is not valid it returns error information </mvt:comment>
-<mvt:if expr="l.rqst_isvalid EQ 1">
+<mvt:if expr="l.settings:rqst_isvalid EQ 1">
 
     <mvt:comment> ----------------------------------------- Add/Update Charge Mode Start ------------------------------------------- </mvt:comment>
-    <mvt:if expr="g.rqst_mode EQ 'add' OR g.rqst_mode = EQ 'update' ">
+    <mvt:if expr="g.rqst_mode EQ 'add' OR g.rqst_mode EQ 'update' ">
         <mvt:do file="g.Module_Library_DB" name="l.success" value="BasketCharge_Delete_All_Type(g.Basket:basket_id, 'SHIPPING_INSURANCE')" />
 
         <mvt:assign name="l.basket_charge:basket_id" value="g.Basket:basket_id" />
         <mvt:assign name="l.basket_charge:module_id" value="0" />
         <mvt:assign name="l.basket_charge:type" value="'SHIPPING_INSURANCE'" />
         <mvt:assign name="l.basket_charge:descrip" value="'Shipping Insurance'" />
-        <mvt:assign name="l.basket_charge:amount" value="g.shipping_insurance" />
-        <mvt:assign name="l.basket_charge:disp_amt" value="g.shipping_insurance" />
+        <mvt:assign name="l.basket_charge:amount" value="g.ship_insurance_cost" />
+        <mvt:assign name="l.basket_charge:disp_amt" value="g.ship_insurance_cost" />
         <mvt:assign name="l.basket_charge:tax_exempt" value="1" />
         <mvt:comment>insert charge</mvt:comment>
         <mvt:do file="g.Module_Library_DB" name="l.chargecount" value="BasketCharge_Insert( l.basket_charge )" />
@@ -153,13 +159,16 @@
                 "status_code" : "&mvtj:ship_api_error:api_status_code;",
                 "message" : "&mvtj:ship_api_error:api_message;"
         }
+        <mvt:if expr="l.settings:ship_api_error:api_status_code EQ 'E2'">
+            <mvt:do file="g.Module_Library_DB" name="l.success" value="BasketCharge_Delete_All_Type(g.Basket:basket_id, 'SHIPPING_INSURANCE')" />
+        </mvt:if>
         </mvt:foreach>
     ]
 <mvt:else>
 
 <mvt:comment> Catch-All Error Message </mvt:comment>
 {
-    "status_code" : "Unkown Error",
+    "status_code" : "Unknown Error",
     "message" : "Unexpected Error"
 }
 </mvt:if>
@@ -169,9 +178,9 @@
 <mvt:comment> Debug Information </mvt:comment>
 <mvt:if expr="g.debug EQ 1">
 {
-    "rqst_params_isvalid": &mvtj:l.rqst_params_isvalid;,
-    "ship_cost_isvalid": &mvtj:l.ship_cost_isvalid;,
-    "current_charge_isvalid": &mvtj:l.current_charge_isvalid;,
-    "rqst_mode_isvalid": &mvtj:l.rqst_mode_isvalid;
+    "rqst_params_isvalid": &mvtj:rqst_params_isvalid;,
+    "ship_cost_isvalid": &mvtj:ship_cost_isvalid;,
+    "current_charge_isvalid": &mvtj:current_charge_isvalid;,
+    "rqst_mode_isvalid": &mvtj:rqst_mode_isvalid;
 }
 </mvt:if>

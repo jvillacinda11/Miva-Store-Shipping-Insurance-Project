@@ -52,7 +52,7 @@ The "api" page will attempt to either add the charge, remove the charge, update 
 ### UNSUCCESSFUL CASES 
 Each parameter validation failure returns its own error status code and message and is returned as an array.
 
-1. Subtotal is less than or equal to 0. This returns:
+1. Charge is less than 0. This returns:
 ```json
 [
     {
@@ -61,7 +61,7 @@ Each parameter validation failure returns its own error status code and message 
     }
 ]
 ```
-1. Subtotal is larger than allowable amount. This returns:
+1. charge is larger than allowable amount. This returns:
 ```json
 [
     {
@@ -98,6 +98,13 @@ Each parameter validation failure returns its own error status code and message 
 ]
 ```
 
+### Edge Cases
+1. Customer initially has a basket that includes shipping insurance. They remove enough item so that the basket total is less than $100. Shipping insurance is only required for baskets that have a subtotal of more than $100. When this happens the charge will be equal to 0 so it would ship_insurance_cost will not pass. The customer must be able to remove the charge so we must add an exception.
+
+if ship_insurance_cost = 0 AND current_charge > 0 AND rqst_mode = 'add' or 'update' then ship_cost_isvalid = 1.
+
+This way it passes the final check.
+
 
 ## IMPORTANT NOTE: 
 Shipping insurance is NOT meant for Local Pick up Shipping Method. I am adding this feature to the basket and mini-basket for the case of customers choosing the Paypal checkout.
@@ -106,18 +113,7 @@ a possibility that a customer can choose to insure their package before clicking
 must be contacted for a partial refund.
 
 ## OTHER CONSIDERATIONS
-If a customer adds or removes things from their basket what happens.
+ How will the shipping insurance update in the case of a customer adding or removing an item to their basket when they have already added shipping insurance to their cart.
 
-    calc and compare shipping cost to current charge
-
-    If (equal)
-        { do nothing }
-    else
-        {Send update GET request}
-
-    Maybe build in the update GET request into the add to cart button
-
-UPDATING OLD CODE
-I will remove the code in the Global Head Tag that deletes the shipping insurance
-
-
+## UPDATING OLD CODE
+1. I will remove the code in the Global Head Tag that deletes the shipping insurance
