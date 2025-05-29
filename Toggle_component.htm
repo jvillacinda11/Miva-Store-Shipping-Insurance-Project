@@ -1,0 +1,21 @@
+<mvt:comment> ------------ Initialize Request Parameter Values ------------ </mvt:comment>
+<mvt:if expr="l.settings:ship_ins_isactive">
+    <mvt:assign name="l.settings:UPS_DV_rqst_param:rqst_mode" value="'delete'" /> 
+<mvt:else>
+    <mvt:assign name="l.settings:UPS_DV_rqst_param:rqst_mode" value="'add'" />
+</mvt:if>
+
+<mvt:assign name="l.settings:UPS_DV_rqst_param:ship_ins_cost" value="l.settings:ship_ins_cost" />
+
+<mvt:if expr="l.settings:UPS_DV_charge[1]:amount">
+    <mvt:assign name="l.settings:UPS_DV_rqst_param:current_charge" value="l.settings:UPS_DV_charge[1]:amount" />
+<mvt:else>
+    <mvt:assign name="l.settings:UPS_DV_rqst_param:current_charge" value="0" />
+</mvt:if>
+
+<mvt:comment> ------------------ Toggle Switch ----------------------------- </mvt:comment>
+
+<div class="toggle-wrapper divToggle <mvt:if expr="l.settings:ship_ins_isactive">active</mvt:if>" data-shipping_cost="&mvte:UPS_DV_rqst_param:ship_ins_cost;" data-current_charge="&mvte:UPS_DV_rqst_param:current_charge;" data-rqst_mode="&mvte:UPS_DV_rqst_param:rqst_mode;" data-current_total="&mvte:global_minibasket:total;">
+   <div class="toggle-circle"></div>
+</div>
+   
