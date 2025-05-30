@@ -203,7 +203,7 @@ This is should added as a page. The canonical url should be `/shippings-insuranc
 
     Below is a list of all possible repsonses. 
 
-    ```json
+    ```js
 
         // SUCCESSFUL CASES
 
@@ -261,7 +261,7 @@ This is should added as a page. The canonical url should be `/shippings-insuranc
     
     The is a debug mode if you pass through `debug=1` as a url parameter. It returns all validation checks and their values in an object. It would look like this;
 
-    ```json
+    ```js
         {
         "rqst_params_isvalid": &mvtj:rqst_params_isvalid;,
         "ship_cost_isvalid": &mvtj:ship_cost_isvalid;,
