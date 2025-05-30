@@ -1,10 +1,13 @@
-<mvt:comment> This is where you update rate percentage and base cost ($100 to $300) </mvt:comment>
+<mvt:comment> This is where you update rate percentage and base cost ($100 to $300) and the maximum allowable subtotal </mvt:comment>
 <mvt:assign name="l.UPS_DV_rate_percentage" value="0.016" />
 <mvt:assign name="l.UPS_DV_base_charge" value="4.85" />
+<mvt:assign name="l.UPS_DV_max_subtotal" value="50000" />
+
 
 <mvt:comment><!-- ------------------------------------- Calculations Start ------------------------------------------ --></mvt:comment>
   <mvt:assign name="l.settings:ship_ins_cost" value="0" />
   <mvt:assign name="l.settings:discount_sum" value="0" />
+  <mvt:assign name="l.settings:UPS_DV_max_charge" value="l.UPS_DV_max_subtotal * l.UPS_DV_rate_percentage" />
 
     <mvt:comment> retrieve total for items in basket </mvt:comment>
     <mvt:do file="g.Module_Library_DB" name="l.settings:item_total_only" value="BasketItem_Total( g.Basket:basket_id )" />

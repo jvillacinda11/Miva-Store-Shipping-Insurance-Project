@@ -8,7 +8,7 @@
 <mvt:comment> REQUEST PARAMETER VERIFICATION </mvt:comment>
 
 <mvt:comment> check if all variables were sent </mvt:comment>
-<mvt:if expr="NOT ISNULL g.ship_insurance_cost AND NOT ISNULL g.current_charge AND NOT ISNULL g.rqst_mode and g.ajax EQ 1">
+<mvt:if expr="NOT ISNULL g.ship_insurance_cost AND NOT ISNULL g.current_charge AND NOT ISNULL g.rqst_mode AND g.max_ship_insurance_cost AND g.ajax EQ 1">
 
     <mvt:assign name="l.settings:rqst_params_isvalid" value="1" />
 
@@ -18,7 +18,7 @@
         <mvt:assign name="l.error:api_status_code" value="'E0'" />
         <mvt:assign name="l.error:api_message" value="'ERROR - Charge Must Be Greater Than 0'" />
         <mvt:assign name="l.ok" value="miva_array_insert( l.settings:ship_api_errors, l.error, -1 )" />
-    <mvt:elseif expr="g.ship_insurance_cost GT 1015">
+    <mvt:elseif expr="g.ship_insurance_cost GT g.max_ship_insurance_cost">
         <mvt:assign name="l.settings:ship_cost_isvalid" value="0" />
         <mvt:assign name="l.error:api_status_code" value="'E1'" />
         <mvt:assign name="l.error:api_message" value="'ERROR - Subtotal too large. Contact Sales for insurance options.'" />

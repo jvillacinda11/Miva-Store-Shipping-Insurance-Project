@@ -5,6 +5,7 @@ function handleDivToggleClick(divToggle) {
 
   setTimeout(function () {
     const shippingCost = parseFloat(divToggle.dataset.shipping_cost);
+    const MaxShippingCost = parseFloat(divToggle.dataset.max_ship_ins_cost);
     const currentCharge = parseFloat(divToggle.dataset.current_charge);
     const rqstMode = divToggle.dataset.rqst_mode;
 
@@ -16,6 +17,7 @@ function handleDivToggleClick(divToggle) {
     const url = "/shipping-insurance-api.html?ship_insurance_cost=" + shippingCost +
                 "&current_charge=" + currentCharge +
                 "&rqst_mode=" + rqstMode +
+                "&max_ship_insurance_cost=" + MaxShippingCost +
                 "&ajax=1";
 
     fetch(url, {
@@ -91,7 +93,7 @@ document.querySelectorAll('.divToggle').forEach(divToggle => {
   });
 });
 
-// Delegated event binding (for dynamically added elements inside #dynamic-wrapper)
+// Delegated event binding (for dynamically added elements inside mini-basket)
 document.querySelector('[data-hook="mini-basket"]').addEventListener('click', function (e) {
   let toggle = e.target.closest('.divToggle');
   if (toggle) {

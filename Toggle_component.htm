@@ -13,9 +13,11 @@
     <mvt:assign name="l.settings:UPS_DV_rqst_param:current_charge" value="0" />
 </mvt:if>
 
+<mvt:assign name="l.settings:UPS_DV_rqst_param:max_ship_ins_cost" value="l.settings:UPS_DV_max_charge" />
+
 <mvt:comment> ------------------ Toggle Switch ----------------------------- </mvt:comment>
 
-<div class="toggle-wrapper divToggle <mvt:if expr="l.settings:ship_ins_isactive">active</mvt:if>" data-shipping_cost="&mvte:UPS_DV_rqst_param:ship_ins_cost;" data-current_charge="&mvte:UPS_DV_rqst_param:current_charge;" data-rqst_mode="&mvte:UPS_DV_rqst_param:rqst_mode;" data-current_total="&mvte:global_minibasket:total;">
+<div class="toggle-wrapper divToggle <mvt:if expr="l.settings:ship_ins_isactive">active</mvt:if>" data-shipping_cost="&mvte:UPS_DV_rqst_param:ship_ins_cost;" data-current_charge="&mvte:UPS_DV_rqst_param:current_charge;" data-rqst_mode="&mvte:UPS_DV_rqst_param:rqst_mode;" data-current_total="&mvte:global_minibasket:total;" data-max_ship_ins_cost="&mvte:UPS_DV_rqst_param:max_ship_ins_cost;">
    <div class="toggle-circle"></div>
 </div>
    

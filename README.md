@@ -1,119 +1,274 @@
- # Overview
+# MIVA Store Shipping Insurance Project
 
-At page load the template will check if there is an existing "Shipping Insurance" fee and if the basket subtotal is the within allowable range.
+**NOTE:** This repo is meant to serves as a reference for a client's existing store. You can try to use this project on your own for your store though it might not meet all your specific needs.  A developer would be required for the install. If you want me to install this feature on your store or have any inquiry please reach out to me at jvillacoding@gmail.com. Thank you!
 
-If the basket subtotal is within the allowable range then the toggleable switch will appear in the basket and mini-basket. It will either be in the on or off position depending on there is an existing "Shipping Insurance" cost.
+## Overview
+This project sets out to create a UI that allows customer to easily add shippping protection to their order at multiple points in their shopping session and to dynamically update the shipping protection fee as they add or remove items from their order.
 
-The customer can click on the switch. On click the toggle bar will trigger an AJAX GET request to a page that serves as an api. It will pass on variables containing information on the customer's basket through url parameters or the request body.
+### High Level Overview
 
-The "api" page will apply the charge, remove the charge or update the charge. In each case, a status code and message are returned and the Basket / mini-basket will update accordingly. The cases can be found here
+1. `UPS_DECLARED_VALUE_MACHINE.mv` calculates the UPS Declared Value Fee and checks if the fee already exists in the customers basket.
+2. `toggle_component.html` uses this information to populate the toggle switches data attributes. 
+3. `ups-dv-toggle-handler.js` sends the AJAX GET request with all the toggle switch's data attributes when the customer clicks the toggle switch.
+4. `API_Page.mv` processes the request parameters (toggle switch data attributes). If they are valid, then the it either add, update, or delete the UPS DV fee. If not then it will send error information.
+5. `Shipping_Insurance_front_end.js` will receive this data and will update the UI as needed.
+6. If the customer makes changes to their basket then `UPS_DECLARED_VALUE_MACHINE.mv` will see that their is a mismatch between the calculated fee and the fee in the basket. In this case it will update the fee.
 
-## Request Body
-The request will be  passed through url parameters.
+---
 
-```https://yourdomain.com/shipping_insurance_api/?ship_insurance_cost={Float}&current_charge={Float}&rqst_mode={String}&ajax=1```
+## Every component explained
 
-## Variables and Possible Values
+### UPS_DECLARED_VALUE_MACHINE.mv
 
-```javascript
-ship_insurance_cost = {float} // Calculated using Subtotal and UPS rates.
+**Where should this be added on the website?**
 
-current_charge = {float} // if charge is active this is the current charge
+This file should be added as a Theme Component Content Section and the component is called in the global header and specifically in the BASK page in the AJAX section. The reason for this is because 
 
-rqst_mode = {string} // add, delete, update
+**What does this file do?**
+1. **Calculates UPS Declared Value Fee** 
+
+    It calculates this based on the subtotal before any discounts. This way the full value of the products can be covered. If the subtotal is below $100 then it is covered by the standard UPS liability of loss so the fee is $0. If it is between $100.01 and $300 then it is a flat rate of $4.85. For anything greater than $300, the fee is calculated rounding up the subtotal to its next 100. Once the fee is calculated it is stored in `l.settings:ship_ins_cost`. 
+
+    This changes yearly. To find up to date information click [here](https://www.ups.com/assets/resources/webcontent/en_US/retail_rates.pdf)
+
+2. **Tracks State of the Fee** 
+    
+    It uses BasketChargeList_Load_Type() on page load to check the customer's basket for a charge with the type of SHIPPING_INSURANCE. If it succeeds and the function find it then `l.settings:ship_ins_isactive` is set to 1 (state is active) if not then it is set to 0 (state is not active). If it is found then that charge structure (MIVA equivalent of an javascript object) is saved to `l.settings:UPS_DV_charge`
+
+3. **Updates current charge**
+
+    To check if there is a change in the basket, it checks to see if the UPS DV charge is active and if the the calculated cost is equal to the the current amount being charged. If they are the same this means that no change has occurred so no update is required. If they don't match then it deletes the current charge and checks if the calculated fee is more than 0. If it is more than zero then it create a new charge that equals the calculated fee. If the calculated charge equal zero that means no new charge need to be created so it moves on to the next step. Finally it will reload all charges so all the charge information is up to date on the UI.
+
+**Variables**
+
+```xml
+l.settings:ship_ins_cost -------- calculated UPS Declared Value Fee
+
+l.settings:ship_ins_isactive ----- holds the state of the fee
+
+l.settings:UPS_DV_charge --------- holds SHIPPING_INSURANCE charge.
+
+l.settings:UPS_DV_max_charge ------ this is calculated by taking the maximum allowable subtotal and mulitplies by the UPS rate percentage. This gives the maximum allowable charge
+
 ```
 
-The "api" page will attempt to either add the charge, remove the charge, update the charge or throw an error. The following are the cases that can be encountered.
+---
 
-## Cases
-### SUCCESSFUL CASES
-1. rqst_mode equals ```'add'```. All Validation checks pass. This returns:
-```json
-    {
-    "status_code": "S1",
-    "message" : "Charge Added Successfully"
+### toggle_component.htm
+
+**Where should this be added on the website?**
+
+This file should be added as a Theme Component Content Section and the component is called wherever you want the toggle to be placed. In our store it is called in the minibasket, ORDL and BASK page. 
+
+**What does this file do?**
+
+1. **Initializes Data Attributes**
+
+    It sets the toggle switch's data attributes. These include `data-rqst_mode` (request mode), `data-shipping_cost` (Calculated UPS DV cost), `data-current_charge` (current UPS DV fee in basket) `data-current_total` (current basket total). The data attributes used for the GET request are put into the structure: `l.settings:UPS_DV_reqst_param`.
+
+    data-
+
+    Note: `data-current_total` is the only data attribute that isn't sent during the GET request. It is used to update the UI. More on this in `ups-dv-toggle-handler.js`. 
+
+2. **Contains the Toggle switch itself**
+
+    This only holds the toggle switch not the surrounding element like in BASK. See Picture below. It has a class name divToggle. This is used to identify every instance of it on the page using `ups-dv-toggle-handler.js`. 
+
+    ![](./assets/BASK_toggle_with_info.png)
+
+**Associated CSS**
+
+I used this css for the toggle switch. This is located in `theme-styles` css resource.
+
+```css
+    /* ---------- Toggle Switch------------ */
+    .toggle-wrapper {
+      display: inline-block;
+      position: relative;
+      width: 35px;
+      height: 15px;
+      background-color: #ccc;
+      border-radius: 34px;
+      cursor: pointer;
+      transition: background-color 0.4s;
     }
-```
-2. rqst_mode equals ```'delete'```. All validation checks pass. This returns:
-```json
-    {
-        "status_code" : "S2",
-        "message" : "Charge Removed Successfully"
+
+    .toggle-circle {
+      position: absolute;
+      height: 10px;
+      width: 10px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: transform 0.4s;
     }
-```
-3. rqst_mode equals ```'update'``` and all validation checks pass. This returns:
-```json
-    {
-        "status_code" : "S3",
-        "message": "Charged Updated Successfully"
+
+    .toggle-wrapper.active {
+      background-color: #408b34;
     }
-```
 
-### UNSUCCESSFUL CASES 
-Each parameter validation failure returns its own error status code and message and is returned as an array.
-
-1. Charge is less than 0. This returns:
-```json
-[
-    {
-        "status_code" : "E0",
-        "message" : "Charge Must Be Greater Than 0"
+    .toggle-wrapper.active .toggle-circle {
+      transform: translateX(19px);
     }
-]
-```
-1. charge is larger than allowable amount. This returns:
-```json
-[
-    {
-        "status_code" : "E1",
-        "message" : "Subtotal too large. Contact Sales for insurance options"
+
+    .toggle-wrapper.loading {
+      background-color: #c0c0c0 !important;
+      cursor: not-allowed;
+      opacity: 0.6;
     }
-]
-```
-1. Current shipping charge is less than zero. This returns:
-```json
-[
-    {
-        "status_code" : "E2",
-        "message" : "Current charge is less than 0. Charge Deleted."
+
+    .u-hidden-important{
+      display: none!important;
     }
-]
-```
-1. rqst_mode does not equal any of the allowable values. This returns:
-```json
-[
-    {
-        "status_code" : "E3",
-        "message" : "Invalid Request Type"
-    }
-]
-```
-1. One or more request parameters is missing. This returns:
-```json
-[
-    {
-        "status_code" : "E4",
-        "message" : "Missing one or more request parameters"
-    }
-]
+
 ```
 
-### Edge Cases
-1. Customer initially has a basket that includes shipping insurance. They remove enough item so that the basket total is less than $100. Shipping insurance is only required for baskets that have a subtotal of more than $100. When this happens the charge will be equal to 0 so it would ship_insurance_cost will not pass. The customer must be able to remove the charge so we must add an exception.
-
-if ship_insurance_cost = 0 AND current_charge > 0 AND rqst_mode = 'add' or 'update' then ship_cost_isvalid = 1.
-
-This way it passes the final check.
+**MIVA Variables**
 
 
-## IMPORTANT NOTE: 
-Shipping insurance is NOT meant for Local Pick up Shipping Method. I am adding this feature to the basket and mini-basket for the case of customers choosing the Paypal checkout.
-Paypal checkout is a one-page checkout where customers can input their address, billing info and choose shipping method. Paypal can't pull the option for Shipping Insurance. So there is
-a possibility that a customer can choose to insure their package before clicking Paypal checkout and then choose Local Pickup on the Paypal one-page checkout. If this happens sales 
-must be contacted for a partial refund.
+```xml
+    l.settings:UPS_DV_rqst_param:rqst_mode ----------------- "request mode". This can have the values of add, delete, and update.
 
-## OTHER CONSIDERATIONS
- How will the shipping insurance update in the case of a customer adding or removing an item to their basket when they have already added shipping insurance to their cart.
+    l.settings:UPS_DV_rqst_param:ship_in_cost -------------- "Shipping Insurance Cost". This is the calculated amount to be charged for the customer's current basket.
 
-## UPDATING OLD CODE
-1. I will remove the code in the Global Head Tag that deletes the shipping insurance
+    l.settings:UPS_DV_rqst_param:current_charge ------------ "Current Charge". This is the existing charge in the customers basket.
+
+    l.settings:UPS_DV_rqst_param:max_ship_ins_cost --------- "Maximum Allowable Shipping Insurance Cost". This is the maximum allowable shipping insurance cost.
+
+```
+
+---
+
+### ups-dv-toggle-handler.js
+
+This takes into account toggle switches that are loaded dynamically (after page load). This only happens when a customer does an ajax add-to-cart and it automatically opens the mini-basket. It delegates the event binding to the mini-basket itself. For toggle switches that are loaded statically (at page load) the event binding is on the toggle itself. 
+
+**Where should this be added on the website?**
+
+This file should be added as a javascript resource, set to global and active and added to the footer_js resource group.
+
+**What does this file do?**
+
+1. **Sends GET request to update UPS DV charge in basket**
+
+    It assigns the toggle switch's data attributes to request parameters and then sends them with a GET request to `API_Page.mv` which has the url `/shipping-insurance-api.html`. 
+
+2. **Updates UI**
+
+    Once it receives a response from the API, it updates the Line item in the main basket, the total in the main basket (BASK only), the total in the mini basket (global), and the toggle switch state (on/off). 
+
+3. **Prevents Spam clicking**
+
+    It put the toggle switch into a loading state once clicked, making it unusable until the whole script is done (after the UI is updated).
+
+---
+
+### API_Page.htm
+
+This page receives toggle data attribute through url parameters from the GET request. They are stored on this page in global variable. They include:
+
+```xml
+g.ship_insurance_cost
+g.current_charge
+g.rqst_mode
+g.max_ship_ins_cost
+```
+
+**Where should this be added on the website?**
+
+This is should added as a page. The canonical url should be `/shippings-insurance-api.html`. You can put a different url but you would have to change the url in `ups-dv-toggle-handler.js`. The page code used was `shipping-insurance-api` but it can by anything you want without changing anything else.
+
+**What does this file do?!**
+
+1. **Validates request data**
+
+    Before it attempts to make changes to the charge, this validates the parameters for the following
+    
+    - Shipping Insurance cost must be withing the allowable range. (0 < shipping insurance cost <= maximum allowable shipping insurance cost)
+    - Current charge must be greater than zero.
+    - request mode must be one of the allowable values: "add", "delete" or "update"
+    - AJAX value must be set to 1.
+    - All parameters must be sent. These include: request mode, shipping insurance cost, current charge, and maximum allowable shipping cost.
+
+2. **Adds, Deletes and Updates Shipping Insurance Fee**
+
+    After validating the parameters, it adds, deletes or updates the charge depending on what mode it is on.
+
+3. **Sends status code and message and error status code and message**
+
+    It returns an array of json objects. Each object has a status code and a status message. If there is no error with validation then the array only contains one object. Its only when there is an error when there is more than one object. The reason it always returns an array is to allow `ups-dv-toggle-handler.js` to handle the response data in a single method rather than two separate methods (one for a single object and another for an array of objects).
+
+    If a status code starts with S it indicates that the request was successful. If it starts with an E then that indicates that there was an error with the request. The message clearly states what the api page did or what went wrong with your request.  
+
+    Below is a list of all possible repsonses. 
+
+    ```json
+
+        // SUCCESSFUL CASES
+
+        [{
+            status_code: 'S1',
+            message : 'Charge Added Successfully'
+        }]
+
+        [{
+            status_code: 'S2',
+            message : 'Charge Removed Successfully'
+        }]
+
+        [{
+            status_code: 'S3',
+            message : 'Charge Updated Successfully'
+        }]
+
+        // UNSUCCESSFUL CASES
+
+        [{
+            status_code: 'E0',
+            message : 'ERROR - Charge Must Be Greater Than 0'
+        }]
+
+        [{
+            status_code: 'E1',
+            message : 'ERROR - Subtotal too large. Contact Sales for insurance options.'
+        }]
+
+        [{
+            status_code: 'E2',
+            message : 'ERROR - Current charge is less than 0. Charge Deleted.'
+        }]
+
+        [{
+            status_code: 'E3',
+            message : 'ERROR - Invalid Request Mode'
+        }]
+
+        [{
+            status_code: 'E4',
+            message : 'ERROR - Missing One Or More Request Parameters'
+        }]
+
+        // CATCH-ALL ERROR MESSAGE
+        [{
+            status_code : "Unknown Error",
+            message : "Unexpected Error"
+        }]
+
+    ```
+
+    4. **Debug Mode**
+    
+    The is a debug mode if you pass through `debug=1` as a url parameter. It returns all validation checks and their values in an object. It would look like this;
+
+    ```json
+        {
+        "rqst_params_isvalid": &mvtj:rqst_params_isvalid;,
+        "ship_cost_isvalid": &mvtj:ship_cost_isvalid;,
+        "current_charge_isvalid": &mvtj:current_charge_isvalid;,
+        "rqst_mode_isvalid": &mvtj:rqst_mode_isvalid;
+        }
+    ```
+
+## Changes in existing template code
+
