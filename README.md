@@ -13,6 +13,7 @@ This project sets out to create a UI that allows customer to easily add shipppin
 4. `API_Page.mv` processes the request parameters (toggle switch data attributes). If they are valid, then the it either add, update, or delete the UPS DV fee. If not then it will send error information.
 5. `Shipping_Insurance_front_end.js` will receive this data and will update the UI as needed.
 6. If the customer makes changes to their basket then `UPS_DECLARED_VALUE_MACHINE.mv` will see that their is a mismatch between the calculated fee and the fee in the basket. In this case it will update the fee.
+7. Our website asks one last time if they want to protect their order on OSEL. This choice is required for the order to be complete. When they submit the form to the next page they will first be taken to a PREACTION page. This is where the charge will added if they chose it. After the charge is applied they are taken to OPAY to complete the purchase.
 
 ---
 
@@ -179,7 +180,7 @@ g.max_ship_ins_cost
 
 This is should added as a page. The canonical url should be `/shippings-insurance-api.html`. You can put a different url but you would have to change the url in `ups-dv-toggle-handler.js`. The page code used was `shipping-insurance-api` but it can by anything you want without changing anything else.
 
-**What does this file do?!**
+**What does this file do?**
 
 1. **Validates request data**
 
@@ -257,18 +258,80 @@ This is should added as a page. The canonical url should be `/shippings-insuranc
 
     ```
 
-    4. **Debug Mode**
-    
-    The is a debug mode if you pass through `debug=1` as a url parameter. It returns all validation checks and their values in an object. It would look like this;
+4. **Debug Mode**
 
-    ```js
-        {
-        "rqst_params_isvalid": &mvtj:rqst_params_isvalid;,
-        "ship_cost_isvalid": &mvtj:ship_cost_isvalid;,
-        "current_charge_isvalid": &mvtj:current_charge_isvalid;,
-        "rqst_mode_isvalid": &mvtj:rqst_mode_isvalid;
-        }
+The is a debug mode if you pass through `debug=1` as a url parameter. It returns all validation checks and their values in an object. It would look like this;
+
+```js
+    {
+    "rqst_params_isvalid": &mvtj:rqst_params_isvalid;,
+    "ship_cost_isvalid": &mvtj:ship_cost_isvalid;,
+    "current_charge_isvalid": &mvtj:current_charge_isvalid;,
+    "rqst_mode_isvalid": &mvtj:rqst_mode_isvalid;
+    }
+```
+
+### PREACTION_OPAY.mv
+
+**I still have to write how this works. This is from the old version of Declared value project. It's still neccessary as a final check for if the customer wants to shipping protection. So it will remain in this version too.**
+
+## Template code changes
+
+1. Global header
+
+The `UPS_DECLARED_VALUE_MACHINE` component must be called in the global header so that its variable are available whenever you need them. Simply add this to your global header.
+
+```xml
+<mvt:item name="readytheme" param="contentsection( 'ups_dv_machine' )" />
+```
+
+2. BASK Page
+
+    1. **Add UPS_DECLARED_VALUE_MACHINE to the AJAX conditional block**
+
+    When a customer adds a product to their cart, It sends a AJAX request to the BASK page using `ajax-add-to-cart.js` (which could be found in the javascript resources). BASK doesn't return the whole page in this request because the request is made with a url parameter of `AJAX=1`. BASK has a conditional block that checks for this parameter and only returns what in that conditional block. After the PROD page receives this data, it uses it to populate the mini-basket and then opens the mini-basket. We have to call the `UPS_DECLARED_VALUE_MACHINE` component here too because the global header isn't loaded in the AJAX conditional block meaning that page doesn't have access to the variables from `UPS_DECLARED_VALUE_MACHINE.mv`.
+
+
+    ```xml
+    <mvt:if expr="g.ajax EQ 1">
+        <mvt:item name="html_profile" />
+        <head>
+        <mvt:comment> <!-------------------------------------------- Here is the call for UPS_DECLARED_VALUE_MACHINE.mv ------------------------------------------------> </mvt:comment>
+            <mvt:item name="readytheme" param="contentsection( 'ups_dv_machine' )" />
+            <meta charset="utf-8">
+        </head>
+        <body id="js-&mvte:page:code;">
+            <mvt:item name="readytheme" param="contentsection( 'mini_basket' )" />
+        </body>
+        </html>
+        <mvt:exit>
+    </mvt:if>
     ```
 
-## Changes in existing template code
+    2. **Add toggle switch**
 
+    I place the toggle switch above the "Save Cart For Later" button. This is a stylistic choice and you can move it or change the appearance to wherever you see fit. As long as you make call the toggle switch it will work.
+
+    ```xml
+    <mvt:if expr="l.settings:ship_ins_cost GT 0 AND l.settings:ship_ins_cost LE l.settings:UPS_DV_max_charge" >
+    <div class="o-layout o-layout-column u-border-rounded u-border-gray-50 u-width-4--l u-width-12" style="padding: 15px;border-radius: 1em;box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px; margin:1rem; background-color: lightblue;">
+        <div class="o-layout__item">
+            <div class="o-layout o-layout--justify-around o-layout--align-center">
+                <div class="o-layout__item">
+                    <span class="u-text-bold u-font-small">Add Shipping Protection ($&mvt:ship_ins_cost;)</span>
+                </div>
+                <div class="o-layout__item">
+            <mvt:item name="readytheme" param="contentsection( 'ups_decl_val_toggle' )" />
+                </div>
+            </div>
+        </div>
+        <div class="o-layout__item"  style="line-height: 1;">
+            <span class="u-font-small">Protect your order! Carriers only cover $100. Fee is calculated based on order subtotal. <a class="u-color-blue u-text-bold" data-mini-modal="" data-mini-modal-type="inline" data-mini-modal-content="data-declared-value-estimator" href="" aria-label="Estimate UPS Declared Value Fee" id="miniModal_1">Learn More</a> <br><br> Do NOT add if you want to pick up your order in-store. </span></span>
+        </div>
+    </div>
+    </mvt:if>	
+    ```
+
+    3. **Add Placeholder Line Item**
+
+    When the charge is not active BASK does not populate the Line Item so we must put a hidden placeholder that can be updated by `ups_dv-toggle-handler.js`.

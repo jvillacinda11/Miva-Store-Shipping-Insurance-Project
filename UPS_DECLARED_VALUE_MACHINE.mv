@@ -47,7 +47,7 @@
 <mvt:if expr="( l.settings:ship_ins_isactive ) AND ( l.settings:UPS_DV_charge[1]:amount NE l.settings:ship_ins_cost )">
         <mvt:comment> Delete old charge </mvt:comment>
         <mvt:do file="g.Module_Library_DB" name="l.success" value="BasketCharge_Delete_All_Type(g.Basket:basket_id, 'SHIPPING_INSURANCE')" />
-        <mvt:if expr="l.settings:ship_ins_cost NE 0">
+        <mvt:if expr="l.settings:ship_ins_cost GT 0 AND l.settings:ship_ins_cost LE l.settings:UPS_DV_max_charge">
             <mvt:comment> Recreate charge with new amount </mvt:comment>
             <mvt:assign name="l.basket_charge:basket_id" value="g.Basket:basket_id" />
             <mvt:assign name="l.basket_charge:module_id" value="0" />
