@@ -1,0 +1,56 @@
+<mvt:assign name="g.shipping_insurance" value="trim(ShippingInsurance)" />
+<mvt:assign name="g.shipping_method" value="g.ShippingMethod" />
+
+
+
+<mvt:do file="g.Module_Library_DB" name="l.success" value="BasketCharge_Delete_All_Type(g.Basket:basket_id, 'SHIPPING_INSURANCE')" />
+
+<mvt:if expr="g.shipping_insurance GT 0 AND g.shipping_method NE 'flatrate:Local Pick-Up' ">
+
+	<mvt:assign name="l.basket_charge:basket_id" value="g.Basket:basket_id" />
+	<mvt:assign name="l.basket_charge:module_id" value="0" />
+	<mvt:assign name="l.basket_charge:type" value="'SHIPPING_INSURANCE'" />
+	<mvt:assign name="l.basket_charge:descrip" value="'Shipping Protection'" />
+	<mvt:assign name="l.basket_charge:amount" value="g.shipping_insurance" />
+	<mvt:assign name="l.basket_charge:disp_amt" value="g.shipping_insurance" />
+	<mvt:assign name="l.basket_charge:tax_exempt" value="1" />
+	<mvt:comment>insert charge</mvt:comment>
+	<mvt:do file="g.Module_Library_DB" name="l.chargecount" value="BasketCharge_Insert( l.basket_charge )" />
+
+	<mvt:comment>
+		| Reload Charges List
+	</mvt:comment>
+	<mvt:do file="g.Module_Library_DB" name="l.success" value="BasketChargeList_Load_Basket( g.Basket:basket_id, l.settings:charges )" /><mvt:comment>For some reason, using `l.settings:basket:charges` would never "refresh" the charges on the page, so we'll need to reassign it</mvt:comment>
+	<mvt:assign name="l.settings:basket:charges" value="l.settings:charges" />
+
+	<mvt:comment>
+		| Regenerate Currency Formatted Charges
+	</mvt:comment>
+	<mvt:foreach iterator="charge" array="basket:charges">
+		<mvt:do file="g.Module_Store_Module_Currency" name="l.settings:charge:formatted_disp_amt" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:charge:amount )" />
+	</mvt:foreach>
+
+	<mvt:comment>
+		| Reload Basket Totals
+	</mvt:comment>
+	<mvt:do file="g.Module_Library_DB" name="l.settings:basket:total" value="Basket_Total( g.Basket:basket_id )" />
+	<mvt:do file="g.Module_Store_Module_Currency" name="l.settings:basket:formatted_total" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:basket:total )" />
+	Total: &mvt:basket:formatted_total;<br>
+
+	<mvt:do file="g.Module_Library_DB" name="l.settings:basket:sub_total" value="Basket_SubTotal( g.Basket:basket_id )" />
+	<mvt:do file="g.Module_Store_Module_Currency" name="l.settings:basket:formatted_sub_total" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:basket:sub_total )" />
+	Sub Total: &mvt:basket:formatted_sub_total;<br>
+
+	<mvt:do file="g.Module_Library_DB" name="l.settings:basket:item_total" value="BasketItem_Total( g.Basket:basket_id )" />
+	<mvt:do file="g.Module_Store_Module_Currency" name="l.settings:basket:formatted_item_total" value="CurrencyModule_AddFormatting( g.Store:currncy_mod, l.settings:basket:item_total )" />
+	Item Total: &mvt:basket:formatted_item_total;<br>
+	
+	<mvt:if expr="l.settings:splitpayment:remaining">
+		<mvt:assign name="l.settings:splitpayment:remaining" value="l.settings:basket:total" />
+		<mvt:assign name="l.settings:splitpayment:formatted_remaining" value="l.settings:basket:formatted_total" />		
+		Remaining Total: &mvt:splitpayment:formatted_remaining;<br>
+	</mvt:if>
+<mvt:else>
+
+
+</mvt:if>
