@@ -3,7 +3,7 @@
 **NOTE:** This repo is meant to serves as a reference for a client's existing store. You can try to use this project on your own for your store though it might not meet all your specific needs.  A developer would be required for the install. If you want me to install this feature on your store or have any inquiry please reach out to me at jvillacoding@gmail.com. Thank you!
 
 ## Overview
-This project sets out to create a UI that allows customer to easily add shipping protection to their order at multiple points in their shopping session and to dynamically update the shipping protection fee as they add or remove items from their order.
+This project sets out to create a UI that allows customer to easily add shipping protection to their order at multiple points in their shopping session and to dynamically update the shipping protection fee as they add or remove items from their order. This was designed so that customers can protect the shipping before they checkout using 
 
 ### High Level Overview
 
@@ -17,7 +17,7 @@ This project sets out to create a UI that allows customer to easily add shipping
 
 ---
 
-## Every component explained
+## Components Explained
 
 ### UPS_DECLARED_VALUE_MACHINE.mv
 
@@ -273,7 +273,31 @@ The is a debug mode if you pass through `debug=1` as a url parameter. It returns
 
 ### PREACTION_OPAY.mv
 
-**I still have to write how this works. This is from the old version of Declared value project. It's still necessary as a final check for if the customer wants to shipping protection. So it will remain in this version too.**
+**Some background on PreActions and PostActions and Actions**
+
+PreAction and PostAction commands are from the PCI NET Tool Belt Module for Miva Merchant. PreActions run before the standard Miva Merchant actions. PostActions run after the standard Miva Merchant actions. They can be used to validate data, add charges, etc. If there are any errors in the PreAction you can set errors codes and return to the original page.  Miva actions are directives that tell the Miva Merchant what to do. Their identifiers are 4 letters long and are invoked by submitting a form or by URL parameter. In our case we will use a form on OSEL to send shipping insurance cost and shipping method to the PreAction page. The PreAction page will process this information and will add a shipping insurance charge or not and move onto the standard Miva Merchant Actions.
+
+**Further Reading**
+
+If you want more information on PreActions you can go to any Page on the Miva Merchant Admin, click the 'Tool Belt' tab. This has the most complete documentation about everything you can do with the PCI NET Tool Belt Module. If you are not an admin on the store you may not be able to see this section. The next best thing is the documentation on [PCI NET's website](https://www.pcinet.com/docs/toolbelt_5.4_preview.html). 
+
+
+If you want more information on Miva Merchant Actions here is [Miva's Official Documentation](https://docs.miva.com/developer/developer-training/development-foundation/actions/)
+
+There are examples on the website's Admin that you can look up as well. 
+
+**Where should this be added on the website?**
+
+This should be added as a Page with Code = `PREACTION_OPAY`.
+
+**What does this file do?**
+
+1. **Adds Charge**
+
+2. **Checks If Local Shipping is Selected**
+
+    If Local Shipping is selected then it will not add a shipping insurance charge.
+
 
 ## Template code changes
 
@@ -422,7 +446,7 @@ The `UPS_DECLARED_VALUE_MACHINE` component must be called in the global header s
     <mvt:if expr="l.settings:ship_ins_cost GT 0 AND l.settings:ship_ins_cost LE l.settings:UPS_DV_max_charge" >
         <div class="x-mini-basket__charges">
             <div class="x-mini__charge-item">
-                <span class="u-text-bold">Add Shipping Protection ($&mvt:ship_ins_cost;) &nbsp:&nbsp;<mvt:item name="readytheme" param="contentsection( 'ups_decl_val_toggle' )" /></span>
+                <span class="u-text-bold">Add Shipping Protection ($&mvt:ship_ins_cost;) &nbsp;:&nbsp;<mvt:item name="readytheme" param="contentsection( 'ups_decl_val_toggle' )" /></span>
             </div>
         </div>
     </mvt:if>
@@ -453,4 +477,5 @@ The `UPS_DECLARED_VALUE_MACHINE` component must be called in the global header s
     <span class="u-text-bold orderTotal">&mvt:global_minibasket:formatted_total;</span>
     ```
 
-5.
+5. OSEL
+
