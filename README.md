@@ -3,7 +3,7 @@
 **NOTE:** This repo is meant to serves as a reference for a client's existing store. You can try to use this project on your own for your store though it might not meet all your specific needs.  A developer would be required for the install. If you want me to install this feature on your store or have any inquiry please reach out to me at jvillacoding@gmail.com. Thank you!
 
 ## Overview
-This project sets out to create a UI that allows customer to easily add shippping protection to their order at multiple points in their shopping session and to dynamically update the shipping protection fee as they add or remove items from their order.
+This project sets out to create a UI that allows customer to easily add shipping protection to their order at multiple points in their shopping session and to dynamically update the shipping protection fee as they add or remove items from their order.
 
 ### High Level Overview
 
@@ -49,7 +49,7 @@ l.settings:ship_ins_isactive ----- holds the state of the fee
 
 l.settings:UPS_DV_charge --------- holds SHIPPING_INSURANCE charge.
 
-l.settings:UPS_DV_max_charge ------ this is calculated by taking the maximum allowable subtotal and mulitplies by the UPS rate percentage. This gives the maximum allowable charge
+l.settings:UPS_DV_max_charge ------ this is calculated by taking the maximum allowable subtotal and multiplies by the UPS rate percentage. This gives the maximum allowable charge
 
 ```
 
@@ -273,7 +273,7 @@ The is a debug mode if you pass through `debug=1` as a url parameter. It returns
 
 ### PREACTION_OPAY.mv
 
-**I still have to write how this works. This is from the old version of Declared value project. It's still neccessary as a final check for if the customer wants to shipping protection. So it will remain in this version too.**
+**I still have to write how this works. This is from the old version of Declared value project. It's still necessary as a final check for if the customer wants to shipping protection. So it will remain in this version too.**
 
 ## Template code changes
 
@@ -296,7 +296,7 @@ The `UPS_DECLARED_VALUE_MACHINE` component must be called in the global header s
     <mvt:if expr="g.ajax EQ 1">
         <mvt:item name="html_profile" />
         <head>
-        <mvt:comment> <!-------------------------------------------- Here is the call for UPS_DECLARED_VALUE_MACHINE.mv ------------------------------------------------> </mvt:comment>
+        <mvt:comment> <!-- ---------------------------------------- Here is the call for UPS_DECLARED_VALUE_MACHINE.mv ---------------------------------------------- --> </mvt:comment>
             <mvt:item name="readytheme" param="contentsection( 'ups_dv_machine' )" />
             <meta charset="utf-8">
         </head>
@@ -310,7 +310,7 @@ The `UPS_DECLARED_VALUE_MACHINE` component must be called in the global header s
 
     2. **Add toggle switch**
 
-    I place the toggle switch above the "Save Cart For Later" button. This is a stylistic choice and you can move it or change the appearance to wherever you see fit. As long as you make call the toggle switch it will work.
+    I place the toggle switch above the "Save Cart For Later" button. This is a stylistic choice and you can move it or change the appearance to wherever you see fit. As long as you make the call to the toggle switch it will work.
 
     ```xml
     <mvt:if expr="l.settings:ship_ins_cost GT 0 AND l.settings:ship_ins_cost LE l.settings:UPS_DV_max_charge" >
@@ -334,4 +334,123 @@ The `UPS_DECLARED_VALUE_MACHINE` component must be called in the global header s
 
     3. **Add Placeholder Line Item**
 
-    When the charge is not active BASK does not populate the Line Item so we must put a hidden placeholder that can be updated by `ups_dv-toggle-handler.js`.
+    When the charge is not active BASK does not populate the line item element so we must put a hidden placeholder that can be updated by `ups_dv-toggle-handler.js`.
+
+    ```xml
+        <mvt:if expr="l.settings:ship_ins_isactive EQ 0">
+                                <tr class="c-table-simple__row u-color-gray-30 shipInsLineItem u-hidden-important">
+                                    <td class="c-table-simple__cell c-table-simple__cell--standard u-flex o-layout--justify-between">
+                                    <span>Shipping Protection</span>
+                                    <span class="shipInsLineItemVal"></span>
+                                    </td>
+                                </tr>
+        </mvt:if>
+    ```
+
+    4. **Add Identifiers to Elements that will be updated**
+
+    We must add identifiers to the elements in the page that will be updated with `ups_dv-toggle-handler.js`. These will be the line item container, the line item value display, and the order total display. I decided to use class identifier incase you wanted to place the toggle switch in more locations than the existing ones. 
+
+    ```xml
+    <!-- For line item container and line item value display (class names are shipInsLineItem and shipInsLineItemVal respectively.) This case is for when shipping insurance is NOT active. -->
+    <mvt:if expr="l.settings:ship_ins_isactive EQ 0">
+        <tr class="c-table-simple__row u-color-gray-30 shipInsLineItem u-hidden-important">
+            <td class="c-table-simple__cell c-table-simple__cell--standard u-flex o-layout--justify-between">
+            <span>Shipping Protection</span>
+            <span class="shipInsLineItemVal"></span>
+            </td>
+        </tr>
+    </mvt:if>
+
+    <!-- For line item container and line item value display (class names are shipInsLineItem and shipInsLineItemVal respectively.) This case is for when shipping insurance is active. -->
+    <mvt:foreach iterator="charge" array="basket:charges">
+        <mvt:if expr="l.settings:charge:type EQ 'SHIPPING_INSURANCE'">
+            <tr class="c-table-simple__row u-color-gray-30 shipInsLineItem">
+                <td class="c-table-simple__cell c-table-simple__cell--standard u-flex o-layout--justify-between">
+                    <span>&mvt:charge:descrip;</span>
+                    <span class="shipInsLineItemVal">&mvt:charge:formatted_disp_amt;</span>
+                </td>
+        <mvt:else>
+            <tr class="c-table-simple__row u-color-gray-30">
+                <td class="c-table-simple__cell c-table-simple__cell--standard u-flex o-layout--justify-between">
+                    <span>&mvt:charge:descrip;</span>
+                    <span>&mvt:charge:formatted_disp_amt;</span>
+                </td>
+        </mvt:if>
+            </tr>
+    </mvt:foreach>
+
+    <!-- Order total display (class name is 'orderTotal') -->
+    
+    <span class="orderTotal">&mvt:basket:formatted_total;</span>
+
+    ```
+
+3. ORDL
+
+    1. **Add Toggle Switch**
+
+    This page only needs a toggle switch for it be functional. The toggle switch element is very similar to what you see in BASK, but because it is inside of a flex box the u-width classes have to be different to compensate. UI will only display the added charge in the minibasket. Order summary is visible once you either go to the next page or use the PayPal buttons.
+
+    ```xml
+    <mvt:if expr="l.settings:ship_ins_cost GT 0 AND l.settings:ship_ins_cost LE l.settings:UPS_DV_max_charge" >
+        <div class="o-layout o-layout-column u-border-rounded u-border-gray-50 u-width-10--l u-width-12" style="padding: 15px;border-radius: 1em;box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px; margin:1rem; background-color: lightblue;">
+            <div class="o-layout__item">
+                <div class="o-layout o-layout--justify-around o-layout--align-center">
+                    <div class="o-layout__item">
+                        <span class="u-text-bold u-font-small">Add Shipping Protection ($&mvt:ship_ins_cost;)</span>
+                    </div>
+                    <div class="o-layout__item">
+                <mvt:item name="readytheme" param="contentsection( 'ups_decl_val_toggle' )" />
+                    </div>
+                </div>
+            </div>
+            <div class="o-layout__item"  style="line-height: 1;">
+                <span class="u-font-small">Protect your order! Carriers only cover $100. Fee is calculated based on order subtotal. <a class="u-color-blue u-text-bold" data-mini-modal="" data-mini-modal-type="inline" data-mini-modal-content="data-declared-value-estimator" href="" aria-label="Estimate UPS Declared Value Fee" id="miniModal_1">Learn More</a>  <br><br> Do NOT add if you want to pick up your order in-store.</span></span>
+            </div>
+        </div>
+    </mvt:if>
+
+    ```
+4. Global Mini-Basket Template
+    
+    1. **Add Toggle Switch**
+
+    I added a very simple version of the toggle switch element. Like the other ones this doesn't appear unless the shipping insurance cost is in the allowable range. This switch also serves as the line item. 
+
+    ```xml
+    <mvt:if expr="l.settings:ship_ins_cost GT 0 AND l.settings:ship_ins_cost LE l.settings:UPS_DV_max_charge" >
+        <div class="x-mini-basket__charges">
+            <div class="x-mini__charge-item">
+                <span class="u-text-bold">Add Shipping Protection ($&mvt:ship_ins_cost;) &nbsp:&nbsp;<mvt:item name="readytheme" param="contentsection( 'ups_decl_val_toggle' )" /></span>
+            </div>
+        </div>
+    </mvt:if>
+    ```
+
+    2. **Remove the Shipping Insurance Line item**
+
+    As stated before, the toggle switch serves as a line item for the mini-basket so we must remove the normal one.
+
+    ```xml
+    <div class="x-mini-basket__charges">
+        <mvt:foreach iterator="charge" array="global_minibasket:charges">
+            <mvt:if expr="l.settings:charge:type NE 'SHIPPING_INSURANCE' ">
+            <div class="x-mini-basket__charge-item">
+                <span class="u-text-uppercase">&mvt:charge:descrip;</span>
+                <span>&mvt:charge:formatted_disp_amt;</span>
+            </div>
+            </mvt:if>
+        </mvt:foreach>
+    </div>
+    ```
+
+    3. **Add order total identifier**
+
+    This has the same class identifier as the one in BASK
+
+    ```xml
+    <span class="u-text-bold orderTotal">&mvt:global_minibasket:formatted_total;</span>
+    ```
+
+5.
